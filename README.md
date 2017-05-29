@@ -43,11 +43,11 @@ Already downloaded music (including different bit rates) will be skipped in futu
 
 By default it will download the 160 kbps version.
 If it is not available, it will fall back to download 320 kbps.
-If 320 kbps is also available, it will try to download the 96 kbps version.
+If 320 kbps is also not available, it will try to download the 96 kbps version.
 
 Adding `-H` option will download the highest bit rates version available.
 
-`-D` means not downloading music files, but records it in history (also records meta data).
+`-D` means not downloading music files, but recording it in history (also records meta data).
 
 Contributing
 ------------
