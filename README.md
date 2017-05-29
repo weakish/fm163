@@ -5,12 +5,14 @@ Dependencies
 ------------
 
 - Python 3.6
+- [sortedcontainers](https://pypi.python.org/pypi/sortedcontainers)
 - [NetEaseMusicApi](https://github.com/littlecodersh/NetEaseMusicApi)
 
 Install
 -------
 
 ```sh
+pip install sortedcontainers
 pip install NetEaseMusicApi
 git clone https://github.com/weakish/fm163.git
 cd fm163
