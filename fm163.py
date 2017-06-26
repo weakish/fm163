@@ -222,9 +222,38 @@ def catchError(e: Union[EOFError, OSError]) -> None:
         catchOSError(e)
 
 
+def playlist_id(string: str) -> int:
+    try:
+        result: int = int(string)
+    except ValueError:  # assuming url
+        from urllib.parse import urlparse, parse_qs
+
+        # NetEase cloud music uses pseudo url queries.
+        url_string: str = string.replace('/#', '')
+        url: Tuple[str] = urlparse(url_string)
+        queries: Dict[str, List[str]] = parse_qs(url.query)
+
+        try:
+            values: List[str] = queries['id']
+        except KeyError:
+            print(f"Invalid url: '{string}' does not contains query key 'id'", file=sys.stderr)
+            sys.exit(getattr(os, 'EX_USAGE', 64))
+        else:
+            value: str = values[0]
+            try:
+                result: int = int(value)
+            except ValueError:
+                print(f"Invalid url: '{string}' contains an empty or noninteger id", file=sys.stderr)
+                sys.exit(getattr(os, 'EX_USAGE', 64))
+            else:
+                return result
+    else:
+        return result
+
+
 def main():
     argumentParser = argparse.ArgumentParser(prog='fm163')
-    argumentParser.add_argument('playlist_id', type=int, nargs='?', default=-1)
+    argumentParser.add_argument('playlist_id', type=playlist_id, nargs='?', default=-1)
     mutuallyExclusiveGroup = argumentParser.add_mutually_exclusive_group()
     mutuallyExclusiveGroup.add_argument(
         '-D', action='store_true',
