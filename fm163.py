@@ -9,22 +9,20 @@ import tempfile
 import traceback
 from pickle import PicklingError
 
-from typing import Dict, NewType, Any, Union, List, Tuple
+from typing import Dict, Any, Union, List, Tuple, TextIO, Callable
 
 from pickle import UnpicklingError
 from sortedcontainers import SortedSet
 from NetEaseMusicApi import api
-
-
-Path = NewType('Path', str)
+from pathlib import Path
 
 
 def configuration_directory() -> Path:
-    return Path(os.path.join(os.path.expanduser('~'), '.fm163'))
+    return Path.home().joinpath('.fm163')
 
 
 def configuration_file(name: str) -> Path:
-    return Path(os.path.join(configuration_directory(), name))
+    return configuration_directory().joinpath(name)
 
 
 def meta_db() -> Path:
