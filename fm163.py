@@ -228,7 +228,12 @@ def playlist_id(string: str) -> int:
 
         # NetEase cloud music uses pseudo url queries.
         url_string: str = string.replace('/#', '')
-        url: Tuple[str] = urlparse(url_string)
+        url_components = Tuple[str, str, str, str, str, str]
+        url: url_components = urlparse(url_string)
+        # [PY-4611](https://youtrack.jetbrains.com/issue/PY-4611)
+        # is fixed in build 112.66, which is not released yet.
+        #
+        # noinspection PyUnresolvedReferences
         queries: Dict[str, List[str]] = parse_qs(url.query)
 
         try:
