@@ -48,35 +48,52 @@ def bug() -> None:
     sys.exit(getattr(os, 'EX_SOFTWARE', 70))
 
 
-def json_dump(thing: Any, path: Path) -> None:
-    """Fast dump to pretty formatted JSON file."""
-    temporary_file_handler: int
-    temporary_file_path: str
-    temporary_file_handler, temporary_file_path = tempfile.mkstemp(dir=os.getcwd(), text=True)
+Serializer = Callable[[Any, TextIO], None]
+
+
+def serialize(thing: Any, path: Path, serializer: Serializer) -> None:
+    """Dump to JSON/Pickle."""
+
+    # Use temporary intermediate variables to avoid false positive of Pycharm.
+    # Pycharm dose not understand PEP 526. ([PY-22204])
+    #
+    # [PY-22204]: https://youtrack.jetbrains.com/issue/PY-22204
+    #
+    #
+    # temporary_file_handler: int = handler
+    # temporary_file_path: str = path
+    # temporary_file_handler, temporary_file_path = tempfile.mkstemp(dir=Path.cwd(), text=True)
+    handler, p = tempfile.mkstemp(text=True)
+    temporary_file_handler: int = handler
+    temporary_file_path: str = p
+
     try:
-        with open(temporary_file_path, 'w', newline='\n') as temporary_file:
-            json.dump(thing, temporary_file,
-                      check_circular=False, allow_nan=False,
-                      indent=2, separators=(',', ': '))
-    except (OverflowError, TypeError, ValueError):
+        # FIXME use utf-8 encoding instead of the platform dependent one
+        with open(temporary_file_path, mode='w', newline='\n') as temporary_file:
+            # [PY-23288](https://youtrack.jetbrains.com/issue/PY-23288)
+            #
+            # noinspection PyTypeChecker
+            serializer(thing, temporary_file)
+    except (OverflowError, TypeError, ValueError, PicklingError):
         bug()
     else:
         os.close(temporary_file_handler)
         os.replace(temporary_file_path, path)
+
+
+def serialize_with_json(thing: Any, file: TextIO) -> None:
+    """Fast dump to pretty formatted JSON file."""
+    json.dump(thing, file,
+              check_circular=False, allow_nan=False,
+              indent=2, separators=(',', ': '))
+
+
+def json_dump(thing: Any, path: Path) -> None:
+    serialize(thing, path, serialize_with_json)
 
 
 def marshal_dump(thing: Any, path: Path) -> None:
-    temporary_file_handler: int
-    temporary_file_path: str
-    temporary_file_handler, temporary_file_path = tempfile.mkstemp(dir=os.getcwd(), text=True)
-    try:
-        with open(temporary_file_path, 'wb') as temporary_file:
-            pickle.dump(thing, temporary_file)
-    except PicklingError:
-        bug()
-    else:
-        os.close(temporary_file_handler)
-        os.replace(temporary_file_path, path)
+    serialize(thing, path, pickle.dump)
 
 
 def print_utf8(text: str) -> None:
