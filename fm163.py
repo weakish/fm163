@@ -164,7 +164,7 @@ def download_file(dfs_id: int):
         f.write(api.download(dfs_id))
 
 
-def download(playlist_id: int, dry_run: bool, hq: bool):
+def download(list_id: int, dry_run: bool, hq: bool):
     history: History = load_history()
     meta: Meta = load_meta()
 
@@ -173,7 +173,7 @@ def download(playlist_id: int, dry_run: bool, hq: bool):
     else:
         qualities: Tuple[str] = ('mMusic', 'hMusic', 'bMusic', 'lMusic')
 
-    playlist: Playlist = api.playlist.detail(playlist_id)
+    playlist: Playlist = api.playlist.detail(list_id)
 
     for track in playlist["tracks"]:
         track_id: int = track["id"]
