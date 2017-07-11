@@ -9,7 +9,7 @@ import tempfile
 import traceback
 from pickle import PicklingError
 
-from typing import Dict, Any, Union, List, Tuple, TextIO, Callable
+from typing import Dict, Any, Union, List, Tuple, TextIO, Callable, Optional
 
 from pickle import UnpicklingError
 from sortedcontainers import SortedSet
@@ -51,7 +51,7 @@ def bug() -> None:
 Serializer = Callable[[Any, TextIO], None]
 
 
-def serialize(thing: Any, path: Path, serializer: Serializer) -> None:
+def serialize(thing: Any, path: Path, mode: str, serializer: Serializer) -> None:
     """Dump to JSON/Pickle."""
 
     # Use temporary intermediate variables to avoid false positive of Pycharm.
@@ -68,8 +68,9 @@ def serialize(thing: Any, path: Path, serializer: Serializer) -> None:
     temporary_file_path: str = p
 
     try:
+        newline: Optional[str] = "\n" if mode == "w" else None
         # FIXME use utf-8 encoding instead of the platform dependent one
-        with open(temporary_file_path, mode='w', newline='\n') as temporary_file:
+        with open(temporary_file_path, mode=mode, newline=newline) as temporary_file:
             # [PY-23288](https://youtrack.jetbrains.com/issue/PY-23288)
             #
             # noinspection PyTypeChecker
@@ -89,11 +90,11 @@ def serialize_with_json(thing: Any, file: TextIO) -> None:
 
 
 def json_dump(thing: Any, path: Path) -> None:
-    serialize(thing, path, serialize_with_json)
+    serialize(thing, path, "w", serialize_with_json)
 
 
 def marshal_dump(thing: Any, path: Path) -> None:
-    serialize(thing, path, pickle.dump)
+    serialize(thing, path, "wb", pickle.dump)
 
 
 def print_utf8(text: str) -> None:
