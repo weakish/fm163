@@ -213,14 +213,26 @@ def download_playlist(
         playlist: Playlist, dry_run: bool, qualities: Tuple[str, ...],
         history: SortedSet, meta: Meta) -> Tuple[SortedSet, Meta]:
 
+    skipped: int = 0
     for track in playlist["tracks"]:
         track_id: int = track["id"]
         if track_id in history:
             skip_download(track)
+            skipped += 1
         else:
             download_track(track, dry_run, qualities)
             meta.append(track)
             history.add(track_id)
+
+    if skipped == 0:
+        pass
+    else:
+        playlist_length: int = playlist["trackCount"]
+        if skipped == playlist_length:
+            # TODO if all tracks are skipped, no need to call save_history & save_meta.
+            print("\nSkipped all tracks in the playlist.")
+        else:
+            print(f"\nSkipped {skipped} of {playlist_length} tracks in the playlist.")
 
     return history, meta
 
