@@ -145,12 +145,12 @@ def export_history() -> None:
     json_dump(list(history), configuration_file('songs_id.json'))
 
 
-def save(record: Union[Meta, History]):
-    # Parametrized generics cannot be used with class or instance checks.
-    if isinstance(record, List):
-        json_dump(record, meta_db())
-    elif isinstance(record, SortedSet):
-        marshal_dump(record, history_db())
+def save_meta(record: Meta):
+    json_dump(record, meta_db())
+
+
+def save_history(record: History):
+    marshal_dump(record, history_db())
 
 
 def dfsId(track: Track, qualities: Tuple[str]):
@@ -213,8 +213,8 @@ def download(list_id: int, dry_run: bool, hq: bool):
             pass
         pass
 
-    save(meta)
-    save(history)
+    save_meta(meta)
+    save_history(history)
 
 
 def catchEOFError() -> None:
