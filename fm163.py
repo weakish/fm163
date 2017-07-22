@@ -69,8 +69,8 @@ def serialize(thing: Any, path: Path, mode: str, serializer: Serializer) -> None
 
     try:
         newline: Optional[str] = "\n" if mode == "w" else None
-        # FIXME use utf-8 encoding instead of the platform dependent one
-        with open(temporary_file_path, mode=mode, newline=newline) as temporary_file:
+        encoding: Optional[str] = "utf-8" if mode == "w" else None
+        with open(temporary_file_path, mode=mode, encoding=encoding, newline=newline) as temporary_file:
             # [PY-23288](https://youtrack.jetbrains.com/issue/PY-23288)
             #
             # noinspection PyTypeChecker
@@ -121,19 +121,15 @@ Meta = List[Track]
 
 
 def load_meta() -> Meta:
-    with open(meta_db(), 'r') as meta_file:
+    with meta_db().open(mode='r') as meta_file:
         try:
             return json.load(meta_file)
         except json.JSONDecodeError:
             bug()
 
-# FIXME use a more concrete type
-# `SortedSet[int]` does not work. (because no stubs?)
-History = SortedSet
 
-
-def load_history() -> History:
-    with open(history_db(), 'rb') as history_file:
+def load_history() -> SortedSet:
+    with history_db().open(mode="rb") as history_file:
         try:
             return pickle.load(history_file)
         except UnpicklingError:
@@ -141,7 +137,7 @@ def load_history() -> History:
 
 
 def export_history() -> None:
-    history: History = load_history()
+    history: SortedSet = load_history()
     json_dump(list(history), configuration_file('songs_id.json'))
 
 
@@ -149,8 +145,22 @@ def save_meta(record: Meta):
     json_dump(record, meta_db())
 
 
-def save_history(record: History):
+def save_history(record: SortedSet):
     marshal_dump(record, history_db())
+
+
+def migrate() -> None:
+    history: List[int] = load_old_history()
+    save_history(SortedSet(history))
+    export_history()
+
+
+def load_old_history() -> List[int]:
+    with history_db().open(mode="rb") as history_file:
+        try:
+            return pickle.load(history_file)
+        except UnpicklingError:
+            bug()
 
 
 def dfsId(track: Track, qualities: Tuple[str]):
@@ -177,13 +187,15 @@ def dfsId(track: Track, qualities: Tuple[str]):
 Playlist = Dict[str, Any]
 
 
+# FIXME NetEase Music download link scheme has changed. https://github.com/littlecodersh/NetEaseMusicApi/pull/5
+# TODO Also download lyrics https://github.com/littlecodersh/NetEaseMusicApi/pull/2
 def download_file(dfs_id: int):
     with open(f'{dfs_id}.mp3', 'wb') as f:
         f.write(api.download(dfs_id))
 
 
 def download(list_id: int, dry_run: bool, hq: bool):
-    history: History = load_history()
+    history: SortedSet = load_history()
     meta: Meta = load_meta()
 
     if hq:
@@ -285,11 +297,19 @@ def main():
     mutuallyExclusiveGroup.add_argument(
         '-j', action='store_true',
         help='export history to json file')
+    mutuallyExclusiveGroup.add_argument(
+        '-m', action='store_true',
+        help='migrate from v0.0.0')
 
     arguments = argumentParser.parse_args()
     if arguments.j:
         try:
             export_history()
+        except (EOFError, OSError) as e:
+            catchError(e)
+    elif arguments.m:
+        try:
+            migrate()
         except (EOFError, OSError) as e:
             catchError(e)
     else:
