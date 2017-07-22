@@ -225,7 +225,7 @@ def download_playlist(
     return history, meta
 
 
-def download_track(track: Dict[str, Any], dry_run: bool, qualities: Tuple[str, ...]) -> None:
+def download_track(track: Track, dry_run: bool, qualities: Tuple[str, ...]) -> None:
     if dry_run:
         pass
     else:
