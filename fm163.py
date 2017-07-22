@@ -319,7 +319,7 @@ def main():
         help='export history to json file')
     mutuallyExclusiveGroup.add_argument(
         '-m', action='store_true',
-        help='migrate from v0.0.0')
+        help='migrate from v0.0.0 and v0.1.0')
 
     arguments = argumentParser.parse_args()
     if arguments.j:
