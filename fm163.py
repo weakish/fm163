@@ -163,7 +163,7 @@ def load_old_history() -> List[int]:
             bug()
 
 
-def dfsId(track: Track, qualities: Tuple[str]):
+def dfsId(track: Track, qualities: Tuple[str, ...]) -> int:
     """
     Returns dfsId of Track, with priority given in qualities.
 
@@ -199,9 +199,9 @@ def download(list_id: int, dry_run: bool, hq: bool):
     meta: Meta = load_meta()
 
     if hq:
-        qualities: Tuple[str] = ('hMusic', 'bMusic', 'mMusic', 'lMusic')
+        qualities: Tuple[str, ...] = ('hMusic', 'bMusic', 'mMusic', 'lMusic')
     else:
-        qualities: Tuple[str] = ('mMusic', 'hMusic', 'bMusic', 'lMusic')
+        qualities: Tuple[str, ...] = ('mMusic', 'hMusic', 'bMusic', 'lMusic')
 
     playlist: Playlist = api.playlist.detail(list_id)
 
