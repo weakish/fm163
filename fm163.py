@@ -204,29 +204,37 @@ def download(list_id: int, dry_run: bool, hq: bool):
         qualities: Tuple[str, ...] = ('mMusic', 'hMusic', 'bMusic', 'lMusic')
 
     playlist: Playlist = api.playlist.detail(list_id)
+    history, meta = download_playlist(playlist, dry_run, qualities, history, meta)
+    save_meta(meta)
+    save_history(history)
+
+
+def download_playlist(
+        playlist: Playlist, dry_run: bool, qualities: Tuple[str, ...],
+        history: SortedSet, meta: Meta) -> Tuple[SortedSet, Meta]:
 
     for track in playlist["tracks"]:
         track_id: int = track["id"]
         if track_id in history:
             skip_download(track)
         else:
-            if dry_run:
-                pass
-            else:
-                try:
-                    dfs_id: int = dfsId(track, qualities)
-                except KeyError:
-                    cannot_download(track)
-                else:
-                    download_file(dfs_id)
-
+            download_track(track, dry_run, qualities)
             meta.append(track)
             history.add(track_id)
-            pass
-        pass
 
-    save_meta(meta)
-    save_history(history)
+    return history, meta
+
+
+def download_track(track: Dict[str, Any], dry_run: bool, qualities: Tuple[str, ...]) -> None:
+    if dry_run:
+        pass
+    else:
+        try:
+            dfs_id: int = dfsId(track, qualities)
+        except KeyError:
+            cannot_download(track)
+        else:
+            download_file(dfs_id)
 
 
 def catchEOFError() -> None:
