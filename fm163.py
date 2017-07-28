@@ -18,7 +18,22 @@ from pathlib import Path
 
 
 def configuration_directory() -> Path:
-    return Path.home().joinpath('.fm163')
+    configuration_path: Path = Path.home().joinpath('.fm163')
+    if configuration_path.exists():
+        return configuration_path
+    else:
+        try:
+            configuration_path.mkdir(parents=True)
+            return configuration_path
+        except FileExistsError:
+            print(
+                '''fm163 uses `~/.fm163` as the data directory.
+                but a file named `~/.fm163` already exist.
+                Abort now. Please rename or move `~/.fm163`.
+                ''',
+                file=sys.stderr)
+            ex_config = 78
+            sys.exit(ex_config)
 
 
 def configuration_file(name: str) -> Path:
@@ -121,19 +136,31 @@ Meta = List[Track]
 
 
 def load_meta() -> Meta:
-    with meta_db().open(mode='r') as meta_file:
+    try:
+        meta_file = meta_db().open(mode='r')
         try:
             return json.load(meta_file)
         except json.JSONDecodeError:
             bug()
+        finally:
+            meta_file.close()
+            
+    except FileNotFoundError:
+        return []
 
 
 def load_history() -> SortedSet:
-    with history_db().open(mode="rb") as history_file:
+    try:
+        history_file = history_db().open(mode="rb")
         try:
             return pickle.load(history_file)
         except UnpicklingError:
             bug()
+        finally:
+            history_file.close()
+
+    except FileNotFoundError:
+        return SortedSet()
 
 
 def export_history() -> None:
