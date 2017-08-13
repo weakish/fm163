@@ -78,7 +78,10 @@ def serialize(thing: Any, path: Path, mode: str, serializer: Serializer) -> None
     # temporary_file_handler: int = handler
     # temporary_file_path: str = path
     # temporary_file_handler, temporary_file_path = tempfile.mkstemp(dir=Path.cwd(), text=True)
-    handler, p = tempfile.mkstemp(text=True)
+    #
+    # Create temporary file at current directory since
+    # `os.replace` may fail if src and dst are on different filesystems.
+    handler, p = tempfile.mkstemp(dir=Path.cwd(), text=True)
     temporary_file_handler: int = handler
     temporary_file_path: str = p
 
@@ -144,7 +147,7 @@ def load_meta() -> Meta:
             bug()
         finally:
             meta_file.close()
-            
+
     except FileNotFoundError:
         return []
 
