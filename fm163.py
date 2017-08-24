@@ -17,6 +17,10 @@ from NetEaseMusicApi import api
 from pathlib import Path
 
 
+class AllTracksSkippedException(Exception):
+    """All tracks has been downloaded before."""
+
+
 def configuration_directory() -> Path:
     configuration_path: Path = Path.home().joinpath('.fm163')
     if configuration_path.exists():
@@ -242,7 +246,8 @@ def download(list_id: int, dry_run: bool, hq: bool):
 def download_playlist(
         playlist: Playlist, dry_run: bool, qualities: Tuple[str, ...],
         history: SortedSet, meta: Meta) -> Tuple[SortedSet, Meta]:
-
+    """Raises:
+        AllTracksSkippedException: when all tracks have been downloaded before."""
     skipped: int = 0
     for track in playlist["tracks"]:
         track_id: int = track["id"]
@@ -259,8 +264,8 @@ def download_playlist(
     else:
         playlist_length: int = playlist["trackCount"]
         if skipped == playlist_length:
-            # TODO if all tracks are skipped, no need to call save_history & save_meta.
             print("\nSkipped all tracks in the playlist.")
+            raise AllTracksSkippedException()
         else:
             print(f"\nSkipped {skipped} of {playlist_length} tracks in the playlist.")
 
@@ -366,6 +371,8 @@ def main():
         if arguments.playlist_id >= 0:
             try:
                 download(arguments.playlist_id, arguments.D, arguments.H)
+            except AllTracksSkippedException:
+                sys.exit(0)
             except (EOFError, OSError) as e:
                 catchError(e)
         else:
