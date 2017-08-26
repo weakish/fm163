@@ -85,7 +85,7 @@ def serialize(thing: Any, path: Path, mode: str, serializer: Serializer) -> None
     #
     # Create temporary file at current directory since
     # `os.replace` may fail if src and dst are on different filesystems.
-    handler, p = tempfile.mkstemp(dir=Path.cwd(), text=True)
+    handler, p = tempfile.mkstemp(dir=configuration_directory(), text=True)
     temporary_file_handler: int = handler
     temporary_file_path: str = p
 
