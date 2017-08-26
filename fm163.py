@@ -133,12 +133,6 @@ def skip_download(track: Track) -> None:
     )
 
 
-def cannot_download(track: Track) -> None:
-    """Cannot find the download link on server."""
-    print_utf8(
-        f"UNAVAILABLE {track['name']} http://music.163.com/#/song?id={track['id']}\n"
-    )
-
 Meta = List[Track]
 
 
@@ -197,7 +191,7 @@ def load_old_history() -> List[int]:
             bug()
 
 
-def dfsId(track: Track, qualities: Tuple[str, ...]) -> int:
+def dfs_id(track: Track, qualities: Tuple[str, ...]) -> int:
     """
     Returns dfsId of Track, with priority given in qualities.
 
@@ -209,11 +203,11 @@ def dfsId(track: Track, qualities: Tuple[str, ...]) -> int:
                 pass
             else:
                 if 'dfsId' in track[quality]:
-                    dfs_id: int = track[quality]['dfsId']
-                    if dfsId is None:
+                    dfsid: int = track[quality]['dfsId']
+                    if dfsid is None:
                         pass
                     else:
-                        return dfs_id
+                        return dfsid
     else:
         raise KeyError()
 
@@ -221,30 +215,21 @@ def dfsId(track: Track, qualities: Tuple[str, ...]) -> int:
 Playlist = Dict[str, Any]
 
 
-# FIXME NetEase Music download link scheme has changed. https://github.com/littlecodersh/NetEaseMusicApi/pull/5
 # TODO Also download lyrics https://github.com/littlecodersh/NetEaseMusicApi/pull/2
-def download_file(dfs_id: int):
-    with open(f'{dfs_id}.mp3', 'wb') as f:
-        f.write(api.download(dfs_id))
 
 
-def download(list_id: int, dry_run: bool, hq: bool):
+def download(list_id: int, dry_run: bool):
     history: SortedSet = load_history()
     meta: Meta = load_meta()
 
-    if hq:
-        qualities: Tuple[str, ...] = ('hMusic', 'bMusic', 'mMusic', 'lMusic')
-    else:
-        qualities: Tuple[str, ...] = ('mMusic', 'hMusic', 'bMusic', 'lMusic')
-
     playlist: Playlist = api.playlist.detail(list_id)
-    history, meta = download_playlist(playlist, dry_run, qualities, history, meta)
+    history, meta = download_playlist(playlist, dry_run, history, meta)
     save_meta(meta)
     save_history(history)
 
 
 def download_playlist(
-        playlist: Playlist, dry_run: bool, qualities: Tuple[str, ...],
+        playlist: Playlist, dry_run: bool,
         history: SortedSet, meta: Meta) -> Tuple[SortedSet, Meta]:
     """Raises:
         AllTracksSkippedException: when all tracks have been downloaded before."""
@@ -255,7 +240,7 @@ def download_playlist(
             skip_download(track)
             skipped += 1
         else:
-            download_track(track, dry_run, qualities)
+            download_track(track_id, dry_run)
             meta.append(track)
             history.add(track_id)
 
@@ -272,25 +257,20 @@ def download_playlist(
     return history, meta
 
 
-def download_track(track: Track, dry_run: bool, qualities: Tuple[str, ...]) -> None:
+def download_track(track_id: int, dry_run: bool) -> None:
     if dry_run:
         pass
     else:
-        try:
-            dfs_id: int = dfsId(track, qualities)
-        except KeyError:
-            cannot_download(track)
-        else:
-            download_file(dfs_id)
+        os.subprocess.call(["ncm", "-s", str(track_id)])
 
 
-def catchEOFError() -> None:
+def catch_eof_error() -> None:
     print(f"Error: file is empty.", file=sys.stderr)
     traceback.print_exc()
     sys.exit(getattr(os, 'EX_IOERR', 74))
 
 
-def catchOSError(e: OSError) -> None:
+def catch_os_error(e: OSError) -> None:
     print(f"Error encountered to access file {e.filename}\n" +
           f"errno {e.errno}: {e.strerror}.",
           file=sys.stderr)
@@ -298,11 +278,11 @@ def catchOSError(e: OSError) -> None:
     sys.exit(getattr(os, 'EX_IOERR', 74))
 
 
-def catchError(e: Union[EOFError, OSError]) -> None:
+def catch_error(e: Union[EOFError, OSError]) -> None:
     if isinstance(e, EOFError):
-        catchEOFError()
+        catch_eof_error()
     elif isinstance(e, OSError):
-        catchOSError(e)
+        catch_os_error(e)
 
 
 def playlist_id(string: str) -> int:
@@ -340,41 +320,38 @@ def playlist_id(string: str) -> int:
 
 
 def main():
-    argumentParser = argparse.ArgumentParser(prog='fm163')
-    argumentParser.add_argument('playlist_id', type=playlist_id, nargs='?', default=-1)
-    mutuallyExclusiveGroup = argumentParser.add_mutually_exclusive_group()
-    mutuallyExclusiveGroup.add_argument(
+    argument_parser = argparse.ArgumentParser(prog='fm163')
+    argument_parser.add_argument('playlist_id', type=playlist_id, nargs='?', default=-1)
+    mutually_exclusive_group = argument_parser.add_mutually_exclusive_group()
+    mutually_exclusive_group.add_argument(
         '-D', action='store_true',
         help='dry run (record history and meta data, without downloading)')
-    mutuallyExclusiveGroup.add_argument(
-        '-H', action='store_true',
-        help='prefer highest bit rate')
-    mutuallyExclusiveGroup.add_argument(
+    mutually_exclusive_group.add_argument(
         '-j', action='store_true',
         help='export history to json file')
-    mutuallyExclusiveGroup.add_argument(
+    mutually_exclusive_group.add_argument(
         '-m', action='store_true',
         help='migrate from v0.0.0 and v0.1.0')
 
-    arguments = argumentParser.parse_args()
+    arguments = argument_parser.parse_args()
     if arguments.j:
         try:
             export_history()
         except (EOFError, OSError) as e:
-            catchError(e)
+            catch_error(e)
     elif arguments.m:
         try:
             migrate()
         except (EOFError, OSError) as e:
-            catchError(e)
+            catch_error(e)
     else:
         if arguments.playlist_id >= 0:
             try:
-                download(arguments.playlist_id, arguments.D, arguments.H)
+                download(arguments.playlist_id, arguments.D)
             except AllTracksSkippedException:
                 sys.exit(0)
             except (EOFError, OSError) as e:
-                catchError(e)
+                catch_error(e)
         else:
             usage()
             sys.exit(getattr(os, 'EX_USAGE', 64))
