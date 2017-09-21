@@ -12,6 +12,8 @@ Dependencies
 Install
 -------
 
+Assuming you have already installed python-3.6 and [ncm]:
+
 ```sh
 pip install sortedcontainers
 pip install NetEaseMusicApi
