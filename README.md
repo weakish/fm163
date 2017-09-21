@@ -7,6 +7,7 @@ Dependencies
 - Python 3.6
 - [sortedcontainers](https://pypi.python.org/pypi/sortedcontainers)
 - [NetEaseMusicApi](https://github.com/littlecodersh/NetEaseMusicApi)
+- [netease-cloud-music-dl](https://github.com/codezjx/netease-cloud-music-dl)
 
 Install
 -------
@@ -28,7 +29,10 @@ Currently it only supports download playlist.
 python fm163.py playlist_id
 ```
 
-Downloaded mp3 files will be saved in current directory.
+Downloaded mp3 files will be saved in the directory specified in [ncm]
+configuration file.
+
+[ncm]: https//github.cezjx/netease-cloud-music-dl
 
 All download music ids and meta data will be saved in `~/.fm163`.
 
@@ -40,12 +44,6 @@ All download music ids and meta data will be saved in `~/.fm163`.
 ```
 
 Already downloaded music (including different bit rates) will be skipped in future downloads.
-
-By default it will download the 160 kbps version.
-If it is not available, it will fall back to download 320 kbps.
-If 320 kbps is also not available, it will try to download the 96 kbps version.
-
-Adding `-H` option will download the highest bit rates version available.
 
 `-D` means not downloading music files, but recording it in history (also records meta data).
 
