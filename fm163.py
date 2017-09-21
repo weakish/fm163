@@ -4,6 +4,7 @@ import argparse
 import json
 import os
 import pickle
+import subprocess
 import sys
 import tempfile
 import traceback
@@ -261,7 +262,7 @@ def download_track(track_id: int, dry_run: bool) -> None:
     if dry_run:
         pass
     else:
-        os.subprocess.call(["ncm", "-s", str(track_id)])
+        subprocess.run(["ncm", "-s", str(track_id)])
 
 
 def catch_eof_error() -> None:
