@@ -7,7 +7,9 @@ Dependencies
 - Python 3.6
 - [sortedcontainers](https://pypi.python.org/pypi/sortedcontainers)
 - [NetEaseMusicApi](https://github.com/littlecodersh/NetEaseMusicApi)
-- [netease-cloud-music-dl](https://github.com/codezjx/netease-cloud-music-dl)
+- [netease-cloud-music-dl][ncm]
+
+[ncm]: https://github.com/codezjx/netease-cloud-music-dl
 
 Install
 -------
