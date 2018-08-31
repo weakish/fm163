@@ -8,14 +8,12 @@ import subprocess
 import sys
 import tempfile
 import traceback
-from pickle import PicklingError
-
+from pathlib import Path
+from pickle import PicklingError, UnpicklingError
 from typing import Dict, Any, Union, List, Tuple, TextIO, Callable, Optional
 
-from pickle import UnpicklingError
-from sortedcontainers import SortedSet
 from NetEaseMusicApi import api
-from pathlib import Path
+from sortedcontainers import SortedSet
 
 
 class AllTracksSkippedException(Exception):
