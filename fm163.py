@@ -12,8 +12,9 @@ from pathlib import Path
 from pickle import PicklingError, UnpicklingError
 from typing import Dict, Any, Union, List, Tuple, TextIO, Callable, Optional
 
-from NetEaseMusicApi import api
+from MusicBoxApi.api import NetEase
 from sortedcontainers import SortedSet
+from MusicBoxApi import api
 
 
 class AllTracksSkippedException(Exception):
@@ -211,7 +212,7 @@ def dfs_id(track: Track, qualities: Tuple[str, ...]) -> int:
         raise KeyError()
 
 
-Playlist = Dict[str, Any]
+Playlist = List[Dict[str, Any]]
 
 
 # TODO Also download lyrics https://github.com/littlecodersh/NetEaseMusicApi/pull/2
@@ -221,7 +222,8 @@ def download(list_id: int, dry_run: bool):
     history: SortedSet = load_history()
     meta: Meta = load_meta()
 
-    playlist: Playlist = api.playlist.detail(list_id)
+    netease: NetEase = api.NetEase()
+    playlist: Playlist = netease.playlist_detail(list_id)
     history, meta = download_playlist(playlist, dry_run, history, meta)
     save_meta(meta)
     save_history(history)
@@ -233,7 +235,7 @@ def download_playlist(
     """Raises:
         AllTracksSkippedException: when all tracks have been downloaded before."""
     skipped: int = 0
-    for track in playlist["tracks"]:
+    for track in playlist:
         track_id: int = track["id"]
         if track_id in history:
             skip_download(track)
@@ -246,7 +248,7 @@ def download_playlist(
     if skipped == 0:
         pass
     else:
-        playlist_length: int = playlist["trackCount"]
+        playlist_length: int = len(playlist)
         if skipped == playlist_length:
             print("\nSkipped all tracks in the playlist.")
             raise AllTracksSkippedException()
