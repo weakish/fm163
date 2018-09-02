@@ -6,7 +6,7 @@ Dependencies
 
 - Python 3.6
 - [sortedcontainers](https://pypi.python.org/pypi/sortedcontainers)
-- [NetEaseMusicApi](https://github.com/littlecodersh/NetEaseMusicApi)
+- [MusicBoxApi](https://github.com/wzpan/MusicBoxApi)
 - [netease-cloud-music-dl][ncm]
 
 [ncm]: https://github.com/codezjx/netease-cloud-music-dl
@@ -18,7 +18,7 @@ Assuming you have already installed python-3.6 and [ncm]:
 
 ```sh
 pip install sortedcontainers
-pip install NetEaseMusicApi
+pip install MusicBoxApi
 git clone https://github.com/weakish/fm163.git
 cd fm163
 python fm163.py --help
