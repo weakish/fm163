@@ -164,22 +164,43 @@ def load_history() -> SortedSet:
         return SortedSet([])
 
 
-def deduplicate(meta: Meta) -> Meta:
-    d: Dict[str, Track] = {track["id"]: track for track in meta}
-    return list(d.values())
+def deduplicate(meta: Meta) -> Tuple[SortedSet, Meta]:
+    d: Dict[int, Track] = {track["id"]: track for track in meta}
+    return SortedSet(d.keys()), list(d.values())
+
+
+def update_history(history: SortedSet, ids: SortedSet):
+    history.update(ids)
+    save_history(history)
+    json_dump(list(history), configuration_file('songs_id.json'))
+
+
+def update_meta(meta: Meta, missing: SortedSet):
+    if len(missing) == 0:
+        pass
+    else:
+        netease: NetEase = api.NetEase()
+        songs_detail: Meta = netease.songs_detail(missing)
+        meta.extend(songs_detail)
+        save_meta(meta)
+
+        if len(missing) > len(songs_detail):
+            print(f"Filled in {len(songs_detail)} track details.\n" +
+                  f"There is still {len(missing) - 100} tracks missing.\n" +
+                  "We will continue fetching them on the next run of `fm163 -j`.\n" +
+                  "Be patient for this eventual consistence.")
 
 
 def export_history() -> None:
     history: SortedSet = load_history()
+    # [PY-22204](https://youtrack.jetbrains.com/issue/PY-22204)
+    ids, m = deduplicate(load_meta())
+    track_ids: SortedSet = ids
+    meta: Meta = m
+    missing_from_meta: SortedSet = history - track_ids
 
-    old_meta: Meta = load_meta()
-    meta: Meta = deduplicate(old_meta)
-    save_meta(meta)
-    
-    for track in meta:
-        history.add(track["id"])
-    save_history(history)    
-    json_dump(list(history), configuration_file('songs_id.json'))
+    update_history(history, track_ids)
+    update_meta(meta, missing_from_meta)
 
 
 def save_meta(record: Meta):
