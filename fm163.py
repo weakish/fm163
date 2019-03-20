@@ -166,6 +166,9 @@ def load_history() -> SortedSet:
 
 def export_history() -> None:
     history: SortedSet = load_history()
+    meta: Meta = load_meta()
+    for track in meta:
+        history.add(track["id"])
     json_dump(list(history), configuration_file('songs_id.json'))
 
 
