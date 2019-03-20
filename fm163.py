@@ -175,20 +175,21 @@ def update_history(history: SortedSet, ids: SortedSet):
     json_dump(list(history), configuration_file('songs_id.json'))
 
 
-def update_meta(meta: Meta, missing: SortedSet):
-    if len(missing) == 0:
+def update_meta(meta: Meta, missing: SortedSet, todo: int):
+    if todo == 0:
         pass
     else:
         netease: NetEase = api.NetEase()
         songs_detail: Meta = netease.songs_detail(missing)
         meta.extend(songs_detail)
-        save_meta(meta)
 
-        if len(missing) > len(songs_detail):
-            print(f"Filled in {len(songs_detail)} track details.\n" +
-                  f"There is still {len(missing) - 100} tracks missing.\n" +
-                  "We will continue fetching them on the next run of `fm163 -j`.\n" +
-                  "Be patient for this eventual consistence.")
+        fetched: SortedSet = SortedSet(detail["id"] for detail in songs_detail)
+        still_missing: SortedSet = missing - fetched
+        if len(still_missing) > 0:
+            if len(still_missing) < todo:
+                update_meta(meta, still_missing, len(still_missing))
+            else:
+                print(f"Cannot fetch {todo} tracks.\n")
 
 
 def export_history() -> None:
@@ -200,7 +201,8 @@ def export_history() -> None:
     missing_from_meta: SortedSet = history - track_ids
 
     update_history(history, track_ids)
-    update_meta(meta, missing_from_meta)
+    update_meta(meta, missing_from_meta, len(missing_from_meta))
+    save_meta(meta)
 
 
 def save_meta(record: Meta):
