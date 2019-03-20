@@ -12,9 +12,9 @@ from pathlib import Path
 from pickle import PicklingError, UnpicklingError
 from typing import Dict, Any, Union, List, Tuple, TextIO, Callable, Optional
 
+from MusicBoxApi import api
 from MusicBoxApi.api import NetEase
 from sortedcontainers import SortedSet
-from MusicBoxApi import api
 
 
 class AllTracksSkippedException(Exception):
@@ -161,14 +161,24 @@ def load_history() -> SortedSet:
             history_file.close()
 
     except FileNotFoundError:
-        return SortedSet()
+        return SortedSet([])
+
+
+def deduplicate(meta: Meta) -> Meta:
+    d: Dict[str, Track] = {track["id"]: track for track in meta}
+    return list(d.values())
 
 
 def export_history() -> None:
     history: SortedSet = load_history()
-    meta: Meta = load_meta()
+
+    old_meta: Meta = load_meta()
+    meta: Meta = deduplicate(old_meta)
+    save_meta(meta)
+    
     for track in meta:
         history.add(track["id"])
+    save_history(history)    
     json_dump(list(history), configuration_file('songs_id.json'))
 
 
