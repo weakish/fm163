@@ -189,7 +189,7 @@ def update_meta(meta: Meta, missing: SortedSet, todo: int):
             if len(still_missing) < todo:
                 update_meta(meta, still_missing, len(still_missing))
             else:
-                print(f"Cannot fetch {todo} tracks.\n")
+                print(f"Cannot fetch {todo} tracks. Probably they are gone (404).\n")
 
 
 def export_history() -> None:
