@@ -221,20 +221,6 @@ def save_history(record: SortedSet):
     marshal_dump(record, history_db())
 
 
-def migrate() -> None:
-    history: List[int] = load_old_history()
-    save_history(SortedSet(history))
-    export_history()
-
-
-def load_old_history() -> List[int]:
-    with history_db().open(mode="rb") as history_file:
-        try:
-            return pickle.load(history_file)
-        except UnpicklingError:
-            bug()
-
-
 def dfs_id(track: Track, qualities: Tuple[str, ...]) -> int:
     """
     Returns dfsId of Track, with priority given in qualities.
@@ -379,19 +365,11 @@ def main():
     mutually_exclusive_group.add_argument(
         '-j', action='store_true',
         help='export history to json file')
-    mutually_exclusive_group.add_argument(
-        '-m', action='store_true',
-        help='migrate from v0.0.0 and v0.1.0')
 
     arguments = argument_parser.parse_args()
     if arguments.j:
         try:
             export_history()
-        except (EOFError, OSError) as e:
-            catch_error(e)
-    elif arguments.m:
-        try:
-            migrate()
         except (EOFError, OSError) as e:
             catch_error(e)
     else:
