@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import argparse
+import configparser
 import json
 import os
 import pickle
@@ -12,9 +13,11 @@ from pathlib import Path
 from pickle import PicklingError, UnpicklingError
 from typing import Dict, Any, Union, List, Tuple, TextIO, Callable, Optional
 
+import leancloud
 from MusicBoxApi import api
 from MusicBoxApi.api import NetEase
 from MusicBoxApi.api import TooManyTracksException
+from leancloud import LeanCloudError
 from sortedcontainers import SortedSet
 
 
@@ -51,6 +54,10 @@ def meta_db() -> Path:
 
 def history_db() -> Path:
     return configuration_file('history')
+
+
+def key_file() -> Path:
+    return configuration_file('key-file.ini')
 
 
 def usage() -> None:
@@ -249,50 +256,59 @@ def dfs_id(track: Track, qualities: Tuple[str, ...]) -> int:
         raise KeyError()
 
 
+def load_keys() -> Tuple[str, str]:
+    config = configparser.ConfigParser()
+    config.read(key_file())
+    app_id: str = config['LeanCloud']['AppID']
+    app_key: str = config['LeanCloud']['AppKey']
+    return app_id, app_key
+
+
 Playlist = List[Dict[str, Any]]
 
 
 # TODO Also download lyrics https://github.com/littlecodersh/NetEaseMusicApi/pull/2
-
-
 def download(list_id: int, dry_run: bool):
-    history: SortedSet = load_history()
-    meta: Meta = load_meta()
+    """Raises:
+        AllTracksSkippedException: when all tracks have been downloaded before."""
+
+    # [PY-22204]
+    i, k = load_keys()
+    app_id: str = i
+    app_key: str = k
+    leancloud.init(app_id, app_key)
 
     netease: NetEase = api.NetEase()
     playlist: Playlist = netease.playlist_detail(list_id)
-    history, meta = download_playlist(playlist, dry_run, history, meta)
-    save_meta(meta)
-    save_history(history)
 
+    lean_track = leancloud.Object.extend('Track')
+    query = lean_track.query
 
-def download_playlist(
-        playlist: Playlist, dry_run: bool,
-        history: SortedSet, meta: Meta) -> Tuple[SortedSet, Meta]:
-    """Raises:
-        AllTracksSkippedException: when all tracks have been downloaded before."""
     skipped: int = 0
     for track in playlist:
         track_id: int = track["id"]
-        if track_id in history:
+        try:
+            query.equal_to('id', track_id)
+            query.first()
+        except LeanCloudError as e:
+            if e.code == 101:  # Object not found
+                download_track(track_id, dry_run)
+                t = lean_track(track)
+                t.save()
+            else:
+                raise e
+        else:
             skip_download(track)
             skipped += 1
-        else:
-            download_track(track_id, dry_run)
-            meta.append(track)
-            history.add(track_id)
 
     if skipped == 0:
         pass
     else:
         playlist_length: int = len(playlist)
         if skipped == playlist_length:
-            print("\nSkipped all tracks in the playlist.")
             raise AllTracksSkippedException()
         else:
             print(f"\nSkipped {skipped} of {playlist_length} tracks in the playlist.")
-
-    return history, meta
 
 
 def download_track(track_id: int, dry_run: bool) -> None:
@@ -383,6 +399,7 @@ def main():
             try:
                 download(arguments.playlist_id, arguments.D)
             except AllTracksSkippedException:
+                print("\nSkipped all tracks in the playlist.")
                 sys.exit(0)
             except TooManyTracksException as e:
                 sys.stderr.write(e)
