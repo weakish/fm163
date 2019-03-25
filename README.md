@@ -51,6 +51,16 @@ Already downloaded music (including different bit rates) will be skipped in futu
 
 `-D` means not downloading music files, but recording it in history (also records meta data).
 
+Bugs
+----
+
+For playlists containing more than 1000 tracks,
+only the first 1000 tracks will be handled.
+
+For more detail, see: [wzpan/MusicBoxApi#4]
+
+[wzpan/MusicBoxApi#4]: https://github.com/wzpan/MusicBoxApi/issues/4
+
 Contributing
 ------------
 
