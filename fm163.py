@@ -256,7 +256,8 @@ Playlist = List[Dict[str, Any]]
 # TODO Also download lyrics https://github.com/littlecodersh/NetEaseMusicApi/pull/2
 def download(list_id: int, dry_run: bool):
     """Raises:
-        AllTracksSkippedException: when all tracks have been downloaded before."""
+        AllTracksSkippedException: when all tracks have been downloaded before;
+        TooManyTracksException: when the playlist is longer than 1000."""
 
     # [PY-22204]
     i, k = load_keys()
