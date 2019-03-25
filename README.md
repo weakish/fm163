@@ -6,7 +6,7 @@ Dependencies
 
 - Python 3.6
 - [sortedcontainers](https://pypi.python.org/pypi/sortedcontainers)
-- [MusicBoxApi](https://github.com/wzpan/MusicBoxApi)
+- a slightly modified version of [MusicBoxApi](https://github.com/wzpan/MusicBoxApi/issues/5)
 - [netease-cloud-music-dl][ncm]
 
 [ncm]: https://github.com/codezjx/netease-cloud-music-dl
@@ -18,7 +18,7 @@ Assuming you have already installed python-3.6 and [ncm]:
 
 ```sh
 pip install sortedcontainers
-pip install MusicBoxApi
+pip install git+https://github.com/weakish/MusicBoxApi.git@too-many-tracks
 git clone https://github.com/weakish/fm163.git
 cd fm163
 python fm163.py --help
@@ -50,16 +50,6 @@ All download music ids and meta data will be saved in `~/.fm163`.
 Already downloaded music (including different bit rates) will be skipped in future downloads.
 
 `-D` means not downloading music files, but recording it in history (also records meta data).
-
-Bugs
-----
-
-For playlists containing more than 1000 tracks,
-only the first 1000 tracks will be handled.
-
-For more detail, see: [wzpan/MusicBoxApi#4]
-
-[wzpan/MusicBoxApi#4]: https://github.com/wzpan/MusicBoxApi/issues/4
 
 Contributing
 ------------

@@ -14,6 +14,7 @@ from typing import Dict, Any, Union, List, Tuple, TextIO, Callable, Optional
 
 from MusicBoxApi import api
 from MusicBoxApi.api import NetEase
+from MusicBoxApi.api import TooManyTracksException
 from sortedcontainers import SortedSet
 
 
@@ -383,6 +384,9 @@ def main():
                 download(arguments.playlist_id, arguments.D)
             except AllTracksSkippedException:
                 sys.exit(0)
+            except TooManyTracksException as e:
+                sys.stderr.write(e)
+                sys.exit(1)
             except (EOFError, OSError) as e:
                 catch_error(e)
         else:
