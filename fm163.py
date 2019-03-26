@@ -279,9 +279,15 @@ def download(list_id: int, dry_run: bool):
             query.first()
         except LeanCloudError as e:
             if e.code == 101:  # Object not found
-                download_track(track_id, dry_run)
-                t = lean_track(track)
+                t = lean_track()
+                for k in track:
+                    v = track[k]
+                    if v is None:
+                        pass
+                    else:
+                        t.set(k, track[k])
                 t.save()
+                download_track(track_id, dry_run)
             else:
                 raise e
         else:
