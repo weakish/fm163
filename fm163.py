@@ -56,10 +56,6 @@ def history_db() -> Path:
     return configuration_file('history')
 
 
-def key_file() -> Path:
-    return configuration_file('key-file.ini')
-
-
 def usage() -> None:
     print('Usage: fm163 PLAYLIST_ID')
 
@@ -243,10 +239,8 @@ def dfs_id(track: Track, qualities: Tuple[str, ...]) -> int:
 
 
 def load_keys() -> Tuple[str, str]:
-    config = configparser.ConfigParser()
-    config.read(key_file())
-    app_id: str = config['LeanCloud']['AppID']
-    app_key: str = config['LeanCloud']['AppKey']
+    app_id: str = os.environ['LEANCLOUD_APP_ID']
+    app_key: str = os.environ['LEANCLOUD_APP_KEY']
     return app_id, app_key
 
 
