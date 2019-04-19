@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
 import argparse
-import configparser
 import json
 import os
 import pickle
@@ -248,7 +247,7 @@ Playlist = List[Dict[str, Any]]
 
 
 # TODO Also download lyrics https://github.com/littlecodersh/NetEaseMusicApi/pull/2
-def download(list_id: int, dry_run: bool):
+def download(list_id: int, dry_run: bool) -> List[Track]:
     """Raises:
         AllTracksSkippedException: when all tracks have been downloaded before;
         TooManyTracksException: when the playlist is longer than 1000."""
@@ -265,7 +264,7 @@ def download(list_id: int, dry_run: bool):
     lean_track = leancloud.Object.extend('Track')
     query = lean_track.query
 
-    skipped: int = 0
+    skipped: List[Track] = []
     for track in playlist:
         track_id: int = track["id"]
         try:
@@ -285,17 +284,14 @@ def download(list_id: int, dry_run: bool):
             else:
                 raise e
         else:
-            skip_download(track)
-            skipped += 1
+            skipped.append(track)
 
-    if skipped == 0:
-        pass
+    playlist_length: int = len(playlist)
+    skipped_length: int = len(skipped)
+    if skipped_length == playlist_length:
+        raise AllTracksSkippedException()
     else:
-        playlist_length: int = len(playlist)
-        if skipped == playlist_length:
-            raise AllTracksSkippedException()
-        else:
-            print(f"\nSkipped {skipped} of {playlist_length} tracks in the playlist.")
+        return skipped
 
 
 def download_track(track_id: int, dry_run: bool) -> None:
@@ -376,7 +372,7 @@ def main():
     else:
         if arguments.playlist_id >= 0:
             try:
-                download(arguments.playlist_id, arguments.D)
+                skipped: List[Track] = download(arguments.playlist_id, arguments.D)
             except AllTracksSkippedException:
                 print("\nSkipped all tracks in the playlist.")
                 sys.exit(0)
@@ -385,6 +381,14 @@ def main():
                 sys.exit(1)
             except (EOFError, OSError) as e:
                 catch_error(e)
+            else:
+                skipped_length: int = len(skipped)
+                if skipped_length == 0:
+                    pass
+                else:
+                    print(f"\nSkipped {skipped_length} tracks in the playlist.")
+                    for track in skipped:
+                        skip_download(track)
         else:
             usage()
             sys.exit(getattr(os, 'EX_USAGE', 64))
