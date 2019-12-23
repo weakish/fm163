@@ -1,4 +1,4 @@
 leancloud
-sortedcontainers==2.1.0
-MusicBoxApi==1.0.9
-typing==3.7.4.1
+sortedcontainers
+git+git://github.com/wzpan/MusicBoxApi@d539d4b06c59bdf79b8d44756c325e39fde81f13#egg=MusicBoxApi
+typing
