@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import argparse
+import http
 import json
 import os
 import pickle
@@ -18,10 +19,6 @@ from MusicBoxApi.api import NetEase
 from MusicBoxApi.api import TooManyTracksException
 from leancloud import LeanCloudError
 from sortedcontainers import SortedSet
-
-
-class AllTracksSkippedException(Exception):
-    """All tracks has been downloaded before."""
 
 
 def configuration_directory() -> Path:
@@ -130,9 +127,9 @@ def print_utf8(text: str) -> None:
 Track = Dict[str, Any]
 
 
-def skip_download(track: Track) -> None:
+def skip(track: Track, type: str = "SKIP") -> None:
     print_utf8(
-        f"SKIP {track['name']} http://music.163.com/#/song?id={track['id']}\n"
+        f"{type} {track['name']} http://music.163.com/#/song?id={track['id']}\n"
     )
 
 
@@ -172,12 +169,6 @@ def deduplicate(meta: Meta) -> Tuple[SortedSet, Meta]:
     return SortedSet(d.keys()), list(d.values())
 
 
-def update_history(history: SortedSet, ids: SortedSet):
-    history.update(ids)
-    save_history(history)
-    json_dump(list(history), configuration_file('songs_id.json'))
-
-
 def update_meta(meta: Meta, missing: SortedSet, todo: int):
     if todo == 0:
         pass
@@ -193,27 +184,6 @@ def update_meta(meta: Meta, missing: SortedSet, todo: int):
                 update_meta(meta, still_missing, len(still_missing))
             else:
                 print(f"Cannot fetch {todo} tracks. Probably they are gone (404).\n")
-
-
-def export_history() -> None:
-    history: SortedSet = load_history()
-    # [PY-22204](https://youtrack.jetbrains.com/issue/PY-22204)
-    ids, m = deduplicate(load_meta())
-    track_ids: SortedSet = ids
-    meta: Meta = m
-    missing_from_meta: SortedSet = history - track_ids
-
-    update_history(history, track_ids)
-    update_meta(meta, missing_from_meta, len(missing_from_meta))
-    save_meta(meta)
-
-
-def save_meta(record: Meta):
-    json_dump(record, meta_db())
-
-
-def save_history(record: SortedSet):
-    marshal_dump(record, history_db())
 
 
 def dfs_id(track: Track, qualities: Tuple[str, ...]) -> int:
@@ -247,15 +217,13 @@ Playlist = List[Dict[str, Any]]
 
 
 # TODO Also download lyrics https://github.com/littlecodersh/NetEaseMusicApi/pull/2
-def download(list_id: int, dry_run: bool) -> List[Track]:
+def prepare_download(list_id: int) -> Tuple[List[Track], List[Track]]:
     """Raises:
-        AllTracksSkippedException: when all tracks have been downloaded before;
         TooManyTracksException: when the playlist is longer than 1000."""
 
-    # [PY-22204]
-    i, k = load_keys()
-    app_id: str = i
-    app_key: str = k
+    app_id: str
+    app_key: str
+    app_id, app_key = load_keys()
     leancloud.init(app_id, app_key)
 
     netease: NetEase = api.NetEase()
@@ -265,33 +233,21 @@ def download(list_id: int, dry_run: bool) -> List[Track]:
     query = lean_track.query
 
     skipped: List[Track] = []
+    to_download: List[Track] = []
     for track in playlist:
         track_id: int = track["id"]
         try:
-            query.equal_to('id', track_id)
+            query.equal_to('objectId', track_id)
             query.first()
         except LeanCloudError as e:
             if e.code == 101:  # Object not found
-                t = lean_track()
-                for k in track:
-                    v = track[k]
-                    if v is None:
-                        pass
-                    else:
-                        t.set(k, track[k])
-                t.save()
-                download_track(track_id, dry_run)
+                to_download.append(track)
             else:
                 raise e
         else:
             skipped.append(track)
 
-    playlist_length: int = len(playlist)
-    skipped_length: int = len(skipped)
-    if skipped_length == playlist_length:
-        raise AllTracksSkippedException()
-    else:
-        return skipped
+    return skipped, to_download
 
 
 def download_track(track_id: int, dry_run: bool) -> None:
@@ -352,6 +308,30 @@ def playlist_id(string: str) -> int:
         return result
 
 
+def save_meta_info(tracks: List[Track]):
+    subdomain: str = os.environ['LEANCLOUD_APP_ID'][0:8].lower()
+    conn = http.client.HTTPSConnection(f"{subdomain}.api.lncldglobal.com")
+    app_id: str
+    app_key: str
+    app_id, app_key = load_keys()
+    headers = {
+        'x-lc-id': app_id,
+        'x-lc-key': app_key,
+        'content-type': "application/json"
+    }
+    for track in tracks:
+        track["objectId"] = track["id"]
+        conn.request("POST", "/1.1/classes/Track", json.dumps(tracks), headers)
+        response = conn.getresponse()
+        if response.status == 201:
+            pass
+        else:
+            skip(track, "Failed to save meta info for")
+            print(response.status, response.reason)
+            print(response.read())
+    conn.close()
+
+
 def main():
     argument_parser = argparse.ArgumentParser(prog='fm163')
     argument_parser.add_argument('playlist_id', type=playlist_id, nargs='?', default=-1)
@@ -359,39 +339,32 @@ def main():
     mutually_exclusive_group.add_argument(
         '-D', action='store_true',
         help='dry run (record history and meta data, without downloading)')
-    mutually_exclusive_group.add_argument(
-        '-j', action='store_true',
-        help='export history to json file')
 
     arguments = argument_parser.parse_args()
-    if arguments.j:
+    if arguments.playlist_id >= 0:
         try:
-            export_history()
+            skipped: List[Track]
+            to_download: List[Track]
+            skipped, to_download = prepare_download(arguments.playlist_id)
+        except TooManyTracksException as e:
+            sys.stderr.write(e)
+            sys.exit(1)
         except (EOFError, OSError) as e:
             catch_error(e)
-    else:
-        if arguments.playlist_id >= 0:
-            try:
-                skipped: List[Track] = download(arguments.playlist_id, arguments.D)
-            except AllTracksSkippedException:
+        else:
+            skipped_length: int = len(skipped)
+            if skipped_length == 0:
                 print("\nSkipped all tracks in the playlist.")
                 sys.exit(0)
-            except TooManyTracksException as e:
-                sys.stderr.write(e)
-                sys.exit(1)
-            except (EOFError, OSError) as e:
-                catch_error(e)
             else:
-                skipped_length: int = len(skipped)
-                if skipped_length == 0:
-                    pass
-                else:
-                    print(f"\nSkipped {skipped_length} tracks in the playlist.")
-                    for track in skipped:
-                        skip_download(track)
-        else:
-            usage()
-            sys.exit(getattr(os, 'EX_USAGE', 64))
+                print(f"\nSkipped {skipped_length} tracks in the playlist.")
+                for track in skipped:
+                    skip(track)
+                save_meta_info(to_download)
+
+    else:
+        usage()
+        sys.exit(getattr(os, 'EX_USAGE', 64))
 
 
 if __name__ == "__main__":
