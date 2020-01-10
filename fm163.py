@@ -10,7 +10,7 @@ import sys
 import traceback
 from pathlib import Path
 from pickle import UnpicklingError
-from typing import Dict, Any, Union, List, Tuple, TextIO, Callable
+from typing import Dict, Any, Union, List, Tuple, TextIO, Callable, Set
 
 import leancloud
 from MusicBoxApi import api
@@ -134,7 +134,7 @@ Playlist = List[Dict[str, Any]]
 
 
 # TODO Also download lyrics https://github.com/littlecodersh/NetEaseMusicApi/pull/2
-def prepare_download(list_id: int) -> Tuple[List[Tuple[str, int]], List[Track]]:
+def prepare_download(playlist: Playlist) -> Tuple[List[Tuple[str, int]], List[str]]:
     """Raises:
         TooManyTracksException: when the playlist is longer than 1000."""
 
@@ -142,22 +142,13 @@ def prepare_download(list_id: int) -> Tuple[List[Tuple[str, int]], List[Track]]:
     app_key: str
     app_id, app_key = load_keys()
     leancloud.init(app_id, app_key)
-    netease: NetEase = api.NetEase()
-    playlist: Playlist = netease.playlist_detail(list_id)
 
     lean_track = leancloud.Object.extend('Track')
     query = lean_track.query
 
-    skipped: List[Tuple[str, int]] = []
-    to_download: List[Track] = []
-    for track in playlist:
-        track_id: str = str(track["id"])
-        query.equal_to('objectId', track_id)
-        if query.count() == 0:
-            to_download.append(track)
-        else:
-            skipped.append((track['name'], track['id']))
-    return skipped, to_download
+    track_id_list: List[str] = [str(track["id"]) for track in playlist]
+    query.contained_in('objectId', track_id_list).limit(1000).select("name")
+    return [(track.get("name"), int(track.id)) for track in query.find()], track_id_list
 
 
 def download_track(track_id: int, dry_run: bool) -> None:
@@ -218,7 +209,7 @@ def playlist_id(string: str) -> int:
         return result
 
 
-def save_meta_info(tracks: List[Track]):
+def save_meta_info(tracks: Set[Track]):
     subdomain: str = os.environ['LEANCLOUD_APP_ID'][0:8].lower()
     conn = http.client.HTTPSConnection(f"{subdomain}.api.lncldglobal.com")
     app_id: str
@@ -253,22 +244,27 @@ def main():
     arguments = argument_parser.parse_args()
     if arguments.playlist_id >= 0:
         try:
-            skipped: List[Track]
-            to_download: List[Track]
-            skipped, to_download = prepare_download(arguments.playlist_id)
+            netease: NetEase = api.NetEase()
+            playlist: Playlist = netease.playlist_detail(arguments.playlist_id)
+            skipped: List[Tuple[str, int]]
+            track_id_list: List[str]
+            skipped, track_id_list = prepare_download(playlist)
         except TooManyTracksException as e:
             sys.stderr.write(e)
             sys.exit(1)
         except (EOFError, OSError) as e:
             catch_error(e)
         else:
-            if len(to_download) == 0:
+            if len(skipped) == len(track_id_list):
                 print("\nSkipped all tracks in the playlist.")
                 sys.exit(0)
             else:
                 print(f"\nSkipped {len(skipped)} tracks in the playlist.")
                 for track_name, track_id in skipped:
                     skip(track_name, track_id)
+                skipped_id: Set[int] = {elem[1] for elem in skipped}
+                to_download_id: Set[int] = {int(track_id) for track_id in track_id_list} - skipped_id
+                to_download: Set[Track] = {playlist[track_id] for track_id in to_download_id}
                 save_meta_info(to_download)
 
     else:
