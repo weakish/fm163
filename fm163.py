@@ -83,9 +83,9 @@ def print_utf8(text: str) -> None:
 Track = Dict[str, Any]
 
 
-def skip(track: Track, msg: str = "SKIP") -> None:
+def skip(track_name: str, track_id: int, msg: str = "SKIP") -> None:
     print_utf8(
-        f"{msg} {track['name']} http://music.163.com/#/song?id={track['id']}\n"
+        f"{msg} {track_name} http://music.163.com/#/song?id={track_id}\n"
     )
 
 
@@ -134,7 +134,7 @@ Playlist = List[Dict[str, Any]]
 
 
 # TODO Also download lyrics https://github.com/littlecodersh/NetEaseMusicApi/pull/2
-def prepare_download(list_id: int) -> Tuple[List[Track], List[Track]]:
+def prepare_download(list_id: int) -> Tuple[List[Tuple[str, int]], List[Track]]:
     """Raises:
         TooManyTracksException: when the playlist is longer than 1000."""
 
@@ -142,14 +142,13 @@ def prepare_download(list_id: int) -> Tuple[List[Track], List[Track]]:
     app_key: str
     app_id, app_key = load_keys()
     leancloud.init(app_id, app_key)
-
     netease: NetEase = api.NetEase()
     playlist: Playlist = netease.playlist_detail(list_id)
 
     lean_track = leancloud.Object.extend('Track')
     query = lean_track.query
 
-    skipped: List[Track] = []
+    skipped: List[Tuple[str, int]] = []
     to_download: List[Track] = []
     for track in playlist:
         track_id: str = str(track["id"])
@@ -157,8 +156,7 @@ def prepare_download(list_id: int) -> Tuple[List[Track], List[Track]]:
         if query.count() == 0:
             to_download.append(track)
         else:
-            skipped.append(track)
-
+            skipped.append((track['name'], track['id']))
     return skipped, to_download
 
 
@@ -238,7 +236,7 @@ def save_meta_info(tracks: List[Track]):
         if response.status == 201:
             response.read()
         else:
-            skip(track, "Failed to save meta info for")
+            skip(track['name'], track['id'], "Failed to save meta info for")
             print(response.status, response.reason)
             print(response.read())
     conn.close()
@@ -269,8 +267,8 @@ def main():
                 sys.exit(0)
             else:
                 print(f"\nSkipped {len(skipped)} tracks in the playlist.")
-                for track in skipped:
-                    skip(track)
+                for track_name, track_id in skipped:
+                    skip(track_name, track_id)
                 save_meta_info(to_download)
 
     else:
