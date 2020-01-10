@@ -7,17 +7,15 @@ import os
 import pickle
 import subprocess
 import sys
-import tempfile
 import traceback
 from pathlib import Path
-from pickle import PicklingError, UnpicklingError
-from typing import Dict, Any, Union, List, Tuple, TextIO, Callable, Optional
+from pickle import UnpicklingError
+from typing import Dict, Any, Union, List, Tuple, TextIO, Callable
 
 import leancloud
 from MusicBoxApi import api
 from MusicBoxApi.api import NetEase
 from MusicBoxApi.api import TooManyTracksException
-from leancloud import LeanCloudError
 from sortedcontainers import SortedSet
 
 
@@ -70,53 +68,11 @@ def bug() -> None:
 Serializer = Callable[[Any, TextIO], None]
 
 
-def serialize(thing: Any, path: Path, mode: str, serializer: Serializer) -> None:
-    """Dump to JSON/Pickle."""
-
-    # Use temporary intermediate variables to avoid false positive of Pycharm.
-    # Pycharm dose not understand PEP 526. ([PY-22204])
-    #
-    # [PY-22204]: https://youtrack.jetbrains.com/issue/PY-22204
-    #
-    #
-    # temporary_file_handler: int = handler
-    # temporary_file_path: str = path
-    # temporary_file_handler, temporary_file_path = tempfile.mkstemp(dir=Path.cwd(), text=True)
-    #
-    # Create temporary file at current directory since
-    # `os.replace` may fail if src and dst are on different filesystems.
-    handler, p = tempfile.mkstemp(dir=configuration_directory(), text=True)
-    temporary_file_handler: int = handler
-    temporary_file_path: str = p
-
-    try:
-        newline: Optional[str] = "\n" if mode == "w" else None
-        encoding: Optional[str] = "utf-8" if mode == "w" else None
-        with open(temporary_file_path, mode=mode, encoding=encoding, newline=newline) as temporary_file:
-            # [PY-23288](https://youtrack.jetbrains.com/issue/PY-23288)
-            #
-            # noinspection PyTypeChecker
-            serializer(thing, temporary_file)
-    except (OverflowError, TypeError, ValueError, PicklingError):
-        bug()
-    else:
-        os.close(temporary_file_handler)
-        os.replace(temporary_file_path, path)
-
-
 def serialize_with_json(thing: Any, file: TextIO) -> None:
     """Fast dump to pretty formatted JSON file."""
     json.dump(thing, file,
               check_circular=False, allow_nan=False,
               indent=2, separators=(',', ': '))
-
-
-def json_dump(thing: Any, path: Path) -> None:
-    serialize(thing, path, "w", serialize_with_json)
-
-
-def marshal_dump(thing: Any, path: Path) -> None:
-    serialize(thing, path, "wb", pickle.dump)
 
 
 def print_utf8(text: str) -> None:
@@ -133,23 +89,6 @@ def skip(track: Track, msg: str = "SKIP") -> None:
     )
 
 
-Meta = List[Track]
-
-
-def load_meta() -> Meta:
-    try:
-        meta_file = meta_db().open(mode='r')
-        try:
-            return json.load(meta_file)
-        except json.JSONDecodeError:
-            bug()
-        finally:
-            meta_file.close()
-
-    except FileNotFoundError:
-        return []
-
-
 def load_history() -> SortedSet:
     try:
         history_file = history_db().open(mode="rb")
@@ -162,28 +101,6 @@ def load_history() -> SortedSet:
 
     except FileNotFoundError:
         return SortedSet([])
-
-
-def deduplicate(meta: Meta) -> Tuple[SortedSet, Meta]:
-    d: Dict[int, Track] = {track["id"]: track for track in meta}
-    return SortedSet(d.keys()), list(d.values())
-
-
-def update_meta(meta: Meta, missing: SortedSet, todo: int):
-    if todo == 0:
-        pass
-    else:
-        netease: NetEase = api.NetEase()
-        songs_detail: Meta = netease.songs_detail(missing)
-        meta.extend(songs_detail)
-
-        fetched: SortedSet = SortedSet(detail["id"] for detail in songs_detail)
-        still_missing: SortedSet = missing - fetched
-        if len(still_missing) > 0:
-            if len(still_missing) < todo:
-                update_meta(meta, still_missing, len(still_missing))
-            else:
-                print(f"Cannot fetch {todo} tracks. Probably they are gone (404).\n")
 
 
 def dfs_id(track: Track, qualities: Tuple[str, ...]) -> int:
