@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import argparse
-import http
+import http.client
 import json
 import os
 import pickle
@@ -127,9 +127,9 @@ def print_utf8(text: str) -> None:
 Track = Dict[str, Any]
 
 
-def skip(track: Track, type: str = "SKIP") -> None:
+def skip(track: Track, msg: str = "SKIP") -> None:
     print_utf8(
-        f"{type} {track['name']} http://music.163.com/#/song?id={track['id']}\n"
+        f"{msg} {track['name']} http://music.163.com/#/song?id={track['id']}\n"
     )
 
 
@@ -235,15 +235,10 @@ def prepare_download(list_id: int) -> Tuple[List[Track], List[Track]]:
     skipped: List[Track] = []
     to_download: List[Track] = []
     for track in playlist:
-        track_id: int = track["id"]
-        try:
-            query.equal_to('objectId', track_id)
-            query.first()
-        except LeanCloudError as e:
-            if e.code == 101:  # Object not found
-                to_download.append(track)
-            else:
-                raise e
+        track_id: str = str(track["id"])
+        query.equal_to('objectId', track_id)
+        if query.count() == 0:
+            to_download.append(track)
         else:
             skipped.append(track)
 
@@ -320,11 +315,11 @@ def save_meta_info(tracks: List[Track]):
         'content-type': "application/json"
     }
     for track in tracks:
-        track["objectId"] = track["id"]
-        conn.request("POST", "/1.1/classes/Track", json.dumps(tracks), headers)
+        track["objectId"] = str(track["id"])
+        conn.request("POST", "/1.1/classes/Track", json.dumps(track), headers)
         response = conn.getresponse()
         if response.status == 201:
-            pass
+            response.read()
         else:
             skip(track, "Failed to save meta info for")
             print(response.status, response.reason)
@@ -352,12 +347,11 @@ def main():
         except (EOFError, OSError) as e:
             catch_error(e)
         else:
-            skipped_length: int = len(skipped)
-            if skipped_length == 0:
+            if len(to_download) == 0:
                 print("\nSkipped all tracks in the playlist.")
                 sys.exit(0)
             else:
-                print(f"\nSkipped {skipped_length} tracks in the playlist.")
+                print(f"\nSkipped {len(skipped)} tracks in the playlist.")
                 for track in skipped:
                     skip(track)
                 save_meta_info(to_download)
