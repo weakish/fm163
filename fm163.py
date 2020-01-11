@@ -7,7 +7,7 @@ import os
 import subprocess
 import sys
 import traceback
-from typing import Dict, Any, Union, List, Tuple, Set
+from typing import Dict, Any, Union, List, Tuple, Set, Iterator
 
 import leancloud
 from MusicBoxApi import api
@@ -107,7 +107,7 @@ def playlist_id(string: str) -> int:
         return result
 
 
-def save_meta_info(tracks: Set[Track]):
+def save_meta_info(tracks: Iterator[Track]):
     subdomain: str = os.environ['LEANCLOUD_APP_ID'][0:8].lower()
     conn: http.client.HTTPConnection = http.client.HTTPSConnection(f"{subdomain}.api.lncldglobal.com")
     app_id: str
@@ -162,9 +162,8 @@ def main():
                     skip(track_name, track_id)
                 skipped_id: Set[int] = {elem[1] for elem in skipped}
                 to_download_id: Set[int] = {int(track_id) for track_id in track_id_list} - skipped_id
-                to_download: Set[Track] = {playlist[track_id] for track_id in to_download_id}
+                to_download: Iterator[Track] = filter(lambda track: track["id"] in to_download_id, playlist)
                 save_meta_info(to_download)
-
     else:
         print("Run `fm163 -h` for help info.")
         sys.exit(getattr(os, 'EX_USAGE', 64))
