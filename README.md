@@ -1,6 +1,9 @@
 fm163 - cli downloader for music.163.com
 ========================================
 
+This README describes v0.4.0.
+The `master` branch is in development and undocumented.
+
 Dependencies
 ------------
 
