@@ -34,7 +34,7 @@ def configuration_directory() -> Path:
                 Abort now. Please rename or move `~/.fm163`.
                 ''',
                 file=sys.stderr)
-            ex_config = 78
+            ex_config: int = 78
             sys.exit(ex_config)
 
 
@@ -143,8 +143,7 @@ def prepare_download(playlist: Playlist) -> Tuple[List[Tuple[str, int]], List[st
     app_id, app_key = load_keys()
     leancloud.init(app_id, app_key)
 
-    lean_track = leancloud.Object.extend('Track')
-    query = lean_track.query
+    query: leancloud.Query = leancloud.Object.extend('Track').query
 
     track_id_list: List[str] = [str(track["id"]) for track in playlist]
     query.contained_in('objectId', track_id_list).limit(1000).select("name")
@@ -211,11 +210,11 @@ def playlist_id(string: str) -> int:
 
 def save_meta_info(tracks: Set[Track]):
     subdomain: str = os.environ['LEANCLOUD_APP_ID'][0:8].lower()
-    conn = http.client.HTTPSConnection(f"{subdomain}.api.lncldglobal.com")
+    conn: http.HTTPSConnection = http.client.HTTPSConnection(f"{subdomain}.api.lncldglobal.com")
     app_id: str
     app_key: str
     app_id, app_key = load_keys()
-    headers = {
+    headers: Dict[str, str] = {
         'x-lc-id': app_id,
         'x-lc-key': app_key,
         'content-type': "application/json"
@@ -223,7 +222,7 @@ def save_meta_info(tracks: Set[Track]):
     for track in tracks:
         track["objectId"] = str(track["id"])
         conn.request("POST", "/1.1/classes/Track", json.dumps(track), headers)
-        response = conn.getresponse()
+        response: http.HTTPResponse = conn.getresponse()
         if response.status == 201:
             response.read()
         else:
@@ -234,14 +233,14 @@ def save_meta_info(tracks: Set[Track]):
 
 
 def main():
-    argument_parser = argparse.ArgumentParser(prog='fm163')
+    argument_parser: argparse.ArgumentParser = argparse.ArgumentParser(prog='fm163')
     argument_parser.add_argument('playlist_id', type=playlist_id, nargs='?', default=-1)
-    mutually_exclusive_group = argument_parser.add_mutually_exclusive_group()
+    mutually_exclusive_group: Any = argument_parser.add_mutually_exclusive_group()
     mutually_exclusive_group.add_argument(
         '-D', action='store_true',
         help='dry run (record history and meta data, without downloading)')
 
-    arguments = argument_parser.parse_args()
+    arguments: argparse.Namespace = argument_parser.parse_args()
     if arguments.playlist_id >= 0:
         try:
             netease: NetEase = api.NetEase()
