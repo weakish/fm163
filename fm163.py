@@ -193,7 +193,7 @@ def playlist_id(string: str) -> int:
 
 def save_meta_info(tracks: Set[Track]):
     subdomain: str = os.environ['LEANCLOUD_APP_ID'][0:8].lower()
-    conn: http.HTTPSConnection = http.client.HTTPSConnection(f"{subdomain}.api.lncldglobal.com")
+    conn: http.client.HTTPConnection = http.client.HTTPSConnection(f"{subdomain}.api.lncldglobal.com")
     app_id: str
     app_key: str
     app_id, app_key = load_keys()
@@ -205,7 +205,7 @@ def save_meta_info(tracks: Set[Track]):
     for track in tracks:
         track["objectId"] = str(track["id"])
         conn.request("POST", "/1.1/classes/Track", json.dumps(track), headers)
-        response: http.HTTPResponse = conn.getresponse()
+        response: http.client.HTTPResponse = conn.getresponse()
         if response.status == 201:
             response.read()
         else:
