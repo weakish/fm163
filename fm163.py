@@ -4,19 +4,16 @@ import argparse
 import http.client
 import json
 import os
-import pickle
 import subprocess
 import sys
 import traceback
 from pathlib import Path
-from pickle import UnpicklingError
 from typing import Dict, Any, Union, List, Tuple, TextIO, Callable, Set
 
 import leancloud
 from MusicBoxApi import api
 from MusicBoxApi.api import NetEase
 from MusicBoxApi.api import TooManyTracksException
-from sortedcontainers import SortedSet
 
 
 def configuration_directory() -> Path:
@@ -87,20 +84,6 @@ def skip(track_name: str, track_id: int, msg: str = "SKIP") -> None:
     print_utf8(
         f"{msg} {track_name} http://music.163.com/#/song?id={track_id}\n"
     )
-
-
-def load_history() -> SortedSet:
-    try:
-        history_file = history_db().open(mode="rb")
-        try:
-            return pickle.load(history_file)
-        except UnpicklingError:
-            bug()
-        finally:
-            history_file.close()
-
-    except FileNotFoundError:
-        return SortedSet([])
 
 
 def dfs_id(track: Track, qualities: Tuple[str, ...]) -> int:
