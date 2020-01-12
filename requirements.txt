@@ -1,4 +1,5 @@
 leancloud
 sortedcontainers
+pypinyin
 git+git://github.com/wzpan/MusicBoxApi@d539d4b06c59bdf79b8d44756c325e39fde81f13#egg=MusicBoxApi
 typing

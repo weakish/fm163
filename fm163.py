@@ -13,6 +13,7 @@ import leancloud
 from MusicBoxApi import api
 from MusicBoxApi.api import NetEase
 from MusicBoxApi.api import TooManyTracksException
+from pypinyin import lazy_pinyin
 
 
 Track = Dict[str, Any]
@@ -44,8 +45,10 @@ def prepare_download(playlist: Playlist) -> Tuple[List[Tuple[str, int]], List[st
     leancloud.init(app_id, app_key)
 
     track_id_list: List[str] = [str(track["id"]) for track in playlist]
-    query: leancloud.Query = leancloud.Object.extend('Track').query.contained_in('objectId', track_id_list).limit(1000).select("name")
-    return sorted([(track.get("name"), int(track.id)) for track in query.find()]), track_id_list
+    query: leancloud.Query = leancloud.Object.extend(
+        'Track').query.contained_in('objectId', track_id_list).limit(1000).select("name")
+    return (sorted([(track.get("name"), int(track.id)) for track in query.find()], key=lambda t: lazy_pinyin(t[0])[0]),
+            track_id_list)
 
 
 def download_track(track_id: int, dry_run: bool) -> None:
@@ -154,8 +157,6 @@ def main():
         else:
             if len(skipped) == len(track_id_list):
                 print("\nSkipped all tracks in the playlist.")
-                for track_name, track_id in skipped:
-                    skip(track_name, track_id)
                 sys.exit(0)
             else:
                 print(f"\nSkipped {len(skipped)} tracks in the playlist.")
