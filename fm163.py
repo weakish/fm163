@@ -47,7 +47,7 @@ def prepare_download(playlist: Playlist) -> Tuple[List[Tuple[str, int]], List[st
     track_id_list: List[str] = [str(track["id"]) for track in playlist]
     query: leancloud.Query = leancloud.Object.extend(
         'Track').query.contained_in('objectId', track_id_list).limit(1000).select("name")
-    return (sorted([(track.get("name"), int(track.id)) for track in query.find()], key=lambda t: lazy_pinyin(t[0])[0]),
+    return (sorted([(track.get("name"), int(track.id)) for track in query.find()], key=lambda t: lazy_pinyin(t[0])[0].lower()),
             track_id_list)
 
 
