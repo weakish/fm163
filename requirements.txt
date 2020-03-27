@@ -1,5 +1,5 @@
 leancloud
-sortedcontainers
+git+git://github.com/weakish/nonpythonic@v0.0.0#egg=nonpythonic
 pypinyin
 git+git://github.com/wzpan/MusicBoxApi@d539d4b06c59bdf79b8d44756c325e39fde81f13#egg=MusicBoxApi
 typing
